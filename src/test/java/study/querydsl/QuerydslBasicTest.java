@@ -524,6 +524,35 @@ public class QuerydslBasicTest {
     }
 
 
+    //가져오는 컬럼이 하나인 기본 프로젝션
+    @Test
+    public void simpleProjection(){
+        List<String> result = queryFactory
+                .select(member.username)
+                .from(member)
+                .fetch();
+        for (String s : result) {
+            System.out.println("s = " + s);
+        }
+    }
+
+    //프로젝션 조건이 두 개 이상인 경우 -> tuple에서 직접 값을 꺼낼 수 있음
+    //여기서의 tuple을 서비스 계층이나 컨트롤러 계층까지 가져가는건 좋은 설계가 아니다
+    //하부 구현을 알 필요가 없기 때문에!!
+    //아무튼 레포지토리 계층까지는 사용해도 상관없지만 이를 다른 계층에 내보낼 때는 dto로 변환해서 나가는 것을 권장
+    @Test
+    public void tupleProjection(){
+        List<Tuple> result = queryFactory
+                .select(member.username, member.age)
+                .from(member)
+                .fetch();
+        for (Tuple tuple : result) {
+            String username = tuple.get(member.username);
+            Integer age = tuple.get(member.age);
+            System.out.println("age = " + age);
+            System.out.println("usernmae = " + username);
+        }
+    }
 
 
 
