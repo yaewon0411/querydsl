@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 import study.querydsl.dto.MemberDto;
+import study.querydsl.dto.QMemberDto;
 import study.querydsl.dto.UserDto;
 import study.querydsl.entity.Member;
 import study.querydsl.entity.QMember;
@@ -658,6 +659,38 @@ public class QuerydslBasicTest {
             System.out.println("userDto = " + userDto);
         }
     }
+
+    //dto에 @QueryProjection 달아서 결과 반환 -> 컴파일 시점에 해당 dto에서 정의한 필드 외 다른 추가되는 필드를 입력한 경우 잡아준다!!
+    //따라서 생성자를 통한 방법과 비슷하지만, 컴파일 시점에 잡아준다는 점에서 좋음
+    //그러나 딱 한가지 고민거리가 생긴다...
+    //컴파일 시점에 타입 안정성을 잡아줘서 좋지만 다음의 단점이 있다
+    // (1) 해당 dto에 대한 Q파일을 생성해워야 한다
+    // (2) DTO가 querydsl에 의존성을 가지게 된다 (패키지를 임포트 해야 하니까)
+    //     - DTO는 여러 레이어를 거쳐서 사용되는데 이 DTO가 querydsl에 의존적으로 설계된다는 아키텍처 점의 깔끔함은 사라져서 애매하다
+    //
+    // querydsl을 애플리케이션 전반에서 많이 사용하고, querydsl 하부구조가 변할 것 같지도 않다라는 판단 하에  그냥 사용하자! 라는 선택을 할 수도 있다
+    // 당연히 여러 상황을 고려해서 선택하자
+    @Test
+    public void findDtoByQueryProjection(){
+        List<MemberDto> result = queryFactory
+                .select(new QMemberDto(member.username, member.age))
+                .from(member)
+                .fetch();
+        for (MemberDto memberDto : result) {
+            System.out.println("memberDto = " + memberDto);
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
 
 
 
