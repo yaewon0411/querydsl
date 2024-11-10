@@ -2,6 +2,9 @@ package study.querydsl;
 
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.Tuple;
+import com.querydsl.core.types.dsl.CaseBuilder;
+import com.querydsl.core.types.dsl.Expressions;
+import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -426,9 +429,99 @@ public class QuerydslBasicTest {
     * 한 방쿼리로 많은걸 해결하려기보다 적절하게 쿼리를 쪼개는 것도 방안이 될 수 있음을 인지하는게 필요
     *
     * */
+    @Test
+    public void basicCase(){
+        List<String> result = queryFactory
+                .select(member.age
+                        .when(10).then("열살")
+                        .when(20).then("스무살")
+                        .otherwise("기타"))
+                .from(member)
+                .fetch();
+        for (String s : result) {
+            System.out.println("s = " + s);
+        }
+    }
 
+    //db는 최소한의 그룹핑과 필터링만 하고
+    //10살이고, 몇 살이고를 전환하는 것이 정말 효율적으로 필요한 경우가 아니면
+    //애플리케이션에서 로직으로 비비는 것을 권장
+    @Test
+    public void complexCase(){
+        List<String> result = queryFactory
+                .select(new CaseBuilder()
+                        .when(member.age.between(0, 20)).then("0~20살")
+                        .when(member.age.between(21, 30)).then("21살~30살")
+                        .otherwise("기타"))
+                .from(member)
+                .fetch();
+        for (String s : result) {
+            System.out.println("s = " + s);
+        }
+    }
 
+    /*
+    * 다음과 같은 임의의 순서로 회원을 출력하고 싶다면?
+    * 1. 0~30살이 아닌 회원을 가장 먼저 출력
+    * 2. 0~20살 회원 출력
+    * 3. 21~30살 회원 출력
+    *
+    * */
+    @Test
+    public void complexCase2(){
+        NumberExpression<Integer> rankPath = new CaseBuilder()
+                .when(member.age.between(0, 20)).then(2)
+                .when(member.age.between(21, 30)).then(1)
+                .otherwise(3);
 
+        List<Tuple> result = queryFactory
+                .select(member.username, member.age, rankPath)
+                .from(member)
+                .orderBy(rankPath.desc())
+                .fetch();
+        for (Tuple tuple : result) {
+            String username = tuple.get(member.username);
+            Integer age = tuple.get(member.age);
+            Integer rank = tuple.get(rankPath);
+            System.out.println("username = " + username + " age = "+age+" rank = "+rank);
+        }
+    }
+
+    //상수가 필요하면 Expresions.constant(xxx) 사용
+    //이 경우 queryDSL은 최적화 목적으로 sql에 상수 값을 넘기지 않고, 조회된 값을 애플리케이션 레벨에서 "A"를 더하는 식으로 수행한다
+    @Test
+    public void constant(){
+        Tuple result = queryFactory
+                .select(member.username, Expressions.constant("A"))
+                .from(member)
+                .fetchFirst();
+
+        System.out.println("result = " + result);
+    }
+
+    //이 경우는 db에 constant 값을 직접 넘겨 db에게 연산을 맡기고 총 반환된 값을 가져온다
+    @Test
+    public void complexConstant(){
+        List<Tuple> result = queryFactory
+                .select(member.username, member.age.add(Expressions.constant(1)))
+                .from(member)
+                .fetch();
+        for (Tuple tuple : result) {
+            System.out.println("tuple = " + tuple);
+        }
+    }
+
+    //중요!! member.age.stringValue()처럼 문자가 아닌 다른 타입이라도 stringValue()로 문자열 변환 가능
+    //이 방법은 ENUM을 처리할 때도 자주 사용한다
+    @Test
+    public void basicConcat(){
+        String result = queryFactory
+                .select(member.username.concat("_").concat(member.age.stringValue()))
+                .from(member)
+                .where(member.username.eq("member1"))
+                .fetchOne();
+        System.out.println("result = " + result);
+    }
 
 
 
